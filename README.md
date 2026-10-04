@@ -20,7 +20,7 @@ Docker image build
 Docker Hub
 rotezsolutions/nginx-devops-assignment
         |
-        | pull
+        | pull latest
         v
 Kubernetes Deployment
         |
@@ -148,7 +148,7 @@ docker push rotezsolutions/nginx-devops-assignment:v1
 
 ### Published tags
 
-The repository currently includes:
+The repository includes:
 
 ```text
 v1
@@ -186,7 +186,7 @@ and the control-plane node reached `Ready` state.
 
 ### Deployment
 
-The Kubernetes Deployment runs two replicas of the application:
+The Kubernetes Deployment runs two replicas and now consumes the image produced by the CI/CD pipeline:
 
 ```yaml
 apiVersion: apps/v1
@@ -205,15 +205,25 @@ spec:
     spec:
       containers:
         - name: nginx-devops
-          image: rotezsolutions/nginx-devops-assignment:v1
+          image: rotezsolutions/nginx-devops-assignment:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
 ```
+
+Using `latest` with `imagePullPolicy: Always` ensures that new Pods fetch the current CI/CD-published image rather than reusing the older manually pushed `v1` image.
 
 Apply it with:
 
 ```bash
 kubectl apply -f k8s/deployment.yaml
+```
+
+To force existing Pods to restart and pull the current image:
+
+```bash
+kubectl rollout restart deployment nginx-devops-deployment
+kubectl rollout status deployment nginx-devops-deployment
 ```
 
 ### Service
@@ -348,7 +358,7 @@ Docker build
 Docker Hub
    |
    v
-Kubernetes Deployment
+Kubernetes Deployment (latest)
    |
    v
 2 Nginx Pods
@@ -377,6 +387,7 @@ The following controls were validated successfully:
 - GitHub Actions authenticated to Docker Hub using repository secrets.
 - CI/CD workflow built and pushed the image automatically.
 - Docker Hub contains `v1`, `latest`, and commit-SHA image tags.
+- Kubernetes manifest now references the CI/CD-managed `latest` image and forces fresh pulls for new Pods.
 
 ## Security Notes
 
@@ -384,6 +395,7 @@ The following controls were validated successfully:
 - GitHub Actions uses repository secrets for registry authentication.
 - The Docker Hub personal access token should be scoped only to the permissions required for this lab and rotated when no longer needed.
 - Secrets, passwords, SSH private keys, and tokens must never be committed to Git.
+- For a production environment, prefer immutable image digests or commit-SHA tags over `latest` for deterministic deployments.
 
 ## Status
 
